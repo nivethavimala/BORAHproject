@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-handwriting: 'Caveat', cursive;
+    --app-bg: #FAF7F2;
+    --app-accent: #D97706;
+  }
+
+  /* Lavender Theme */
+  :root.theme-lavender,
+  :root.theme-lavender-dream {
+    --app-bg: #F8F5FF;
+    --app-accent: #9333EA;
+  }
+
+  /* Midnight Theme */
+  :root.theme-midnight {
+    --app-bg: #090D16;
+    --app-accent: #6366F1;
+  }
+
+  /* Forest Theme */
+  :root.theme-forest,
+  :root.theme-cozy-sage {
+    --app-bg: #F3F7F4;
+    --app-accent: #059669;
+  }
+
+  /* Rose Gold Theme */
+  :root.theme-rose-gold {
+    --app-bg: #FFF5F5;
+    --app-accent: #E11D48;
+  }
+
+  /* Ocean Calm Theme */
+  :root.theme-ocean-calm {
+    --app-bg: #F0F7FB;
+    --app-accent: #0284C7;
+  }
+
+  /* Purple Universe (BORAH Signature) */
+  :root.theme-purple-universe {
+    --app-bg: #110726;
+    --app-accent: #A855F7;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--app-bg);
+  }
+}
+
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-handwriting {
+  font-family: var(--font-handwriting);
+}
+
+.font-merriweather {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.font-floane {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-poly {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-cursive {
+  font-family: 'Dancing Script', 'Caveat', cursive;
+}
+
+.font-light {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 300;
+}
+
+.font-aileron {
+  font-family: system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.eyes-protection-filter {
+  filter: sepia(0.22) brightness(0.97);
+  background-color: #FFF9EE !important;
+}
+
+/* Custom subtle scrollbars for comfortable journal reading */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Notebook paper texture effect */
+.notebook-ruled-lines {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 100% 28px;
+  line-height: 28px;
+}
+
+.dark .notebook-ruled-lines {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* ========================================================
+   ARMY_EASTER_EGG_LAYER: PurpleSparkle Keyframe Animations
+   ======================================================== */
+
+@keyframes purple-float-up {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate(var(--tw-drift-x, 0px), -25px) scale(1.15) rotate(15deg);
+  }
+  60% {
+    opacity: 0.85;
+    transform: translate(calc(var(--tw-drift-x, 0px) * 1.5), -65px) scale(1) rotate(-10deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--tw-drift-x, 0px) * 2), -110px) scale(0.4) rotate(35deg);
+  }
+}
+
+@keyframes purple-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.85);
+    filter: drop-shadow(0 0 2px rgba(192, 132, 252, 0.4));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.9));
+  }
+}
+
+@keyframes purple-star-glow {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px rgba(216, 180, 254, 0.8));
+  }
+}
+
+@keyframes purple-soft-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-purple-float-up {
+  animation: purple-float-up 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-purple-twinkle {
+  animation: purple-twinkle 1.8s ease-in-out infinite;
+}
+
+.animate-purple-star-glow {
+  animation: purple-star-glow 2s ease-in-out infinite;
+}
+
+.animate-purple-fade-in {
+  animation: purple-soft-fade-in 0.4s ease-out forwards;
+}
+
+/* Strict reduced-motion accessibility guarantee */
+@media (prefers-reduced-motion: reduce) {
+  .animate-purple-float-up,
+  .animate-purple-twinkle,
+  .animate-purple-star-glow {
+    animation: none !important;
+    transform: none !important;
+  }
+  .animate-purple-fade-in {
+    animation: purple-soft-fade-in 0.2s ease-out forwards;
+  }
+}

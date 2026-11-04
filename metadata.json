@@ -1,0 +1,6 @@
+{
+  "name": "LUMORA — Private Journal, Memory, Planner & Life Companion",
+  "description": "Your private space for thoughts, plans, memories, and personal reflection.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
