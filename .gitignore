@@ -1,0 +1,50 @@
+# Python virtual environments & caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Node / Bun leftovers
+node_modules/
+bun.lock
+npm-debug.log*
+yarn-error.log*
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime databases (auto-created on server start)
+database/*.sqlite
+database/*.sqlite-*
+database/*.db
+database/*.json
+database/*.tmp
+
+# AI Studio internal workspace metadata
+.aistudio/
+metadata.json
+
+# Unused design scratch assets & duplicate doc backups
+# (Canonical downloadable PDFs/DOCX/TEX live in public/; slide screenshots live in msc_docs/screens/)
+public/assets/
+msc_docs/*.pdf
+msc_docs/*.docx
+msc_docs/*.tex
+msc_docs/*.md
+msc_docs/models.py
+
+# Build & OS artifacts
+build/
+dist/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

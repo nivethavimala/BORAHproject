@@ -1,0 +1,13 @@
+{
+  "name": "borah-sanctuary",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bash scripts/start_server.sh",
+    "start": "bash scripts/start_server.sh",
+    "build": "python3 -m py_compile app.py backend/*.py scripts/*.py",
+    "clean": "rm -rf __pycache__ backend/__pycache__ scripts/__pycache__",
+    "lint": "bash -c 'set -e; python3 -m py_compile app.py backend/*.py scripts/*.py; find static/js -name \"*.js\" -exec node --check {} +'"
+  }
+}

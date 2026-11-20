@@ -1,0 +1,313 @@
+:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Lora', Georgia, serif;
+  --font-handwriting: 'Caveat', cursive;
+  --app-bg: #FAF7F2;
+  --app-accent: #D97706;
+}
+
+/* Lavender Theme */
+:root.theme-lavender,
+:root.theme-lavender-dream {
+  --app-bg: #F8F5FF;
+  --app-accent: #9333EA;
+}
+
+/* Midnight Theme */
+:root.theme-midnight {
+  --app-bg: #090D16;
+  --app-accent: #6366F1;
+}
+
+/* Forest Theme */
+:root.theme-forest,
+:root.theme-cozy-sage {
+  --app-bg: #F3F7F4;
+  --app-accent: #059669;
+}
+
+/* Rose Gold Theme */
+:root.theme-rose-gold {
+  --app-bg: #FFF5F5;
+  --app-accent: #E11D48;
+}
+
+/* Ocean Calm Theme */
+:root.theme-ocean-calm {
+  --app-bg: #F0F7FB;
+  --app-accent: #0284C7;
+}
+
+/* Purple Universe (BORAH Signature) */
+:root.theme-purple-universe {
+  --app-bg: #110726;
+  --app-accent: #A855F7;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--app-bg);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-handwriting {
+  font-family: var(--font-handwriting);
+}
+
+.font-merriweather {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.font-floane {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-poly {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-cursive {
+  font-family: 'Dancing Script', 'Caveat', cursive;
+}
+
+.font-light {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 300;
+}
+
+.font-aileron {
+  font-family: system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.eyes-protection-filter {
+  filter: sepia(0.22) brightness(0.97);
+  background-color: #FFF9EE !important;
+}
+
+/* Custom subtle scrollbars for comfortable journal reading */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Notebook paper texture effect */
+.notebook-ruled-lines {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 100% 28px;
+  line-height: 28px;
+}
+
+.dark .notebook-ruled-lines {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* ========================================================
+   ARMY_EASTER_EGG_LAYER: PurpleSparkle Keyframe Animations
+   ======================================================== */
+
+@keyframes purple-float-up {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate(var(--tw-drift-x, 0px), -25px) scale(1.15) rotate(15deg);
+  }
+  60% {
+    opacity: 0.85;
+    transform: translate(calc(var(--tw-drift-x, 0px) * 1.5), -65px) scale(1) rotate(-10deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--tw-drift-x, 0px) * 2), -110px) scale(0.4) rotate(35deg);
+  }
+}
+
+@keyframes purple-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.85);
+    filter: drop-shadow(0 0 2px rgba(192, 132, 252, 0.4));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.9));
+  }
+}
+
+@keyframes purple-star-glow {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px rgba(216, 180, 254, 0.8));
+  }
+}
+
+@keyframes purple-soft-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-purple-float-up {
+  animation: purple-float-up 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-purple-twinkle {
+  animation: purple-twinkle 1.8s ease-in-out infinite;
+}
+
+.animate-purple-star-glow {
+  animation: purple-star-glow 2s ease-in-out infinite;
+}
+
+.animate-purple-fade-in {
+  animation: purple-soft-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes bora-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes bora-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
+@keyframes bora-ear-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-6deg); }
+}
+
+@keyframes bora-ear-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(6deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInFromTop1 {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromTop2 {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromTop3 {
+  from { opacity: 0; transform: translateY(-0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromTop4 {
+  from { opacity: 0; transform: translateY(-1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom2 {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom3 {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-bora-float {
+  animation: bora-float 3.4s ease-in-out infinite;
+}
+
+.animate-in {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in { animation-name: fadeIn; }
+.zoom-in-95 { animation-name: zoomIn95; }
+.slide-in-from-top-1 { animation-name: slideInFromTop1; }
+.slide-in-from-top-2 { animation-name: slideInFromTop2; }
+.slide-in-from-top-3 { animation-name: slideInFromTop3; }
+.slide-in-from-top-4 { animation-name: slideInFromTop4; }
+.slide-in-from-bottom { animation-name: slideInFromBottom; }
+.slide-in-from-bottom-2 { animation-name: slideInFromBottom2; }
+.slide-in-from-bottom-3 { animation-name: slideInFromBottom3; }
+.slide-in-from-left { animation-name: slideInFromLeft; }
+
+.duration-200 { animation-duration: 200ms; }
+.duration-300 { animation-duration: 300ms; }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Strict reduced-motion accessibility guarantee */
+@media (prefers-reduced-motion: reduce) {
+  .animate-purple-float-up,
+  .animate-purple-twinkle,
+  .animate-purple-star-glow,
+  .animate-bora-float,
+  .animate-in {
+    animation: none !important;
+    transform: none !important;
+  }
+  .animate-purple-fade-in {
+    animation: purple-soft-fade-in 0.2s ease-out forwards;
+  }
+}
