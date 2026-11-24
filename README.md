@@ -59,4 +59,4 @@ BORAH is a privacy-focused digital journaling sanctuary, voice memo studio, plan
 
 ## Authors & Credits
 - **Project & Presentation:** Nivetha M
-- **IEEE Research Manuscript:** Mrs. Nivetha M & Mr. Prabu
+- **IEEE Research Manuscript:** Mrs. Nivetha M 
