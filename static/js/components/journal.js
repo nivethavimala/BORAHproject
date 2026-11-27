@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { escapeHtml, renderIcons, sanitizeUrl, todayIso } from '../utils/dom.js';
 import { exportJournalEntriesToPDF } from '../utils/pdfExport.js';
-import { mountInlineVoiceRecorder, mountInlineVoiceMemoCard } from './journalVoice.js';
+import { mountInlineVoiceRecorder, mountInlineVoiceMemoCard, mountInlineVoiceToText } from './journalVoice.js';
 import {
   WALLPAPER_THEMES,
   mountThemeDrawer,
@@ -94,6 +94,8 @@ export function renderJournalView(
   let cursorPosition = 0;
   let isRecordingInlineVoice = false;
   let inlineRecordPosition = null;
+  let isVoiceToTextActive = false;
+  let voiceToTextPosition = null;
   let isMenuOpen = false;
   let isPromptActive = false;
   let isEyesProtectionActive = false;
@@ -193,6 +195,8 @@ export function renderJournalView(
     isEditing = false;
     isRecordingInlineVoice = false;
     inlineRecordPosition = null;
+    isVoiceToTextActive = false;
+    voiceToTextPosition = null;
   };
 
   const startNewEntry = (overridePrompt = null, overrideTitle = null) => {
@@ -223,6 +227,8 @@ export function renderJournalView(
     isEditing = true;
     isRecordingInlineVoice = false;
     inlineRecordPosition = null;
+    isVoiceToTextActive = false;
+    voiceToTextPosition = null;
   };
 
   const insertAtCursor = (textToInsert) => {
@@ -248,10 +254,63 @@ export function renderJournalView(
     if (!isEditing) {
       isEditing = true;
     }
+    isPreviewMode = false;
+    isVoiceToTextActive = false;
+    voiceToTextPosition = null;
     const ta = container.querySelector('[data-j-content]');
     inlineRecordPosition = ta ? ta.selectionStart : cursorPosition !== undefined ? cursorPosition : content.length;
     isRecordingInlineVoice = true;
     render();
+  };
+
+  const handleStartVoiceToText = () => {
+    if (isVoiceToTextActive) {
+      isVoiceToTextActive = false;
+      voiceToTextPosition = null;
+      render();
+      return;
+    }
+    if (!isEditing) {
+      isEditing = true;
+    }
+    isPreviewMode = false;
+    isRecordingInlineVoice = false;
+    inlineRecordPosition = null;
+    const ta = container.querySelector('[data-j-content]');
+    voiceToTextPosition = ta ? ta.selectionStart : cursorPosition !== undefined ? cursorPosition : content.length;
+    isVoiceToTextActive = true;
+    render();
+  };
+
+  const handleCompleteVoiceToText = (spokenText, meta = {}) => {
+    const clean = (spokenText || '').trim();
+    if (!clean) {
+      isVoiceToTextActive = false;
+      voiceToTextPosition = null;
+      render();
+      return;
+    }
+    const pos = voiceToTextPosition !== null ? voiceToTextPosition : cursorPosition || content.length;
+    const before = content.slice(0, pos);
+    const after = content.slice(pos);
+    const needsLeadingSpace = before.length > 0 && !/[\s\n]$/.test(before);
+    const needsTrailingSpace = after.length > 0 && !/^[\s\n]/.test(after);
+    const snippet = `${needsLeadingSpace ? ' ' : ''}${clean}${needsTrailingSpace ? ' ' : ''}`;
+    content = before + snippet + after;
+    cursorPosition = (before + snippet).length;
+    if (!title.trim() && meta?.suggestedTitle) {
+      title = meta.suggestedTitle;
+    }
+    isVoiceToTextActive = false;
+    voiceToTextPosition = null;
+    render();
+    const ta = container.querySelector('[data-j-content]');
+    if (ta) {
+      ta.focus();
+      ta.selectionStart = cursorPosition;
+      ta.selectionEnd = cursorPosition;
+    }
+    showToast('Speech converted to text & inserted into journal!');
   };
 
   const handleCompleteInlineVoice = (clip) => {
@@ -1252,8 +1311,15 @@ export function renderJournalView(
                   <i data-lucide="tag" class="w-5 h-5"></i>
                 </button>
 
-                <button type="button" data-j-voice-bottom class="p-2 rounded-xl text-purple-600 hover:text-purple-800 transition-all cursor-pointer" title="Record Voice Journal at cursor">
+                <button type="button" data-j-voice-bottom
+                  class="p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                    isVoiceToTextActive
+                      ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-400 animate-pulse'
+                      : 'text-sky-600 hover:text-sky-800 hover:bg-sky-50'
+                  }"
+                  title="Voice to Text (Dictate speech directly into text)">
                   <i data-lucide="mic" class="w-5 h-5"></i>
+                  <span class="text-[10px] font-bold tracking-tight hidden sm:inline">Text</span>
                 </button>
               </div>
             </div>
@@ -1269,9 +1335,18 @@ export function renderJournalView(
     renderToastDom();
     renderSidebarListOnly();
 
-    // Mount inline voice recorder if active
+    // Mount inline voice recorder or voice-to-text dictation if active
     const recorderSlot = container.querySelector('[data-j-recorder-slot]');
-    if (isRecordingInlineVoice && recorderSlot) {
+    if (isVoiceToTextActive && recorderSlot) {
+      cleanupRecorder = mountInlineVoiceToText(recorderSlot, {
+        onInsertText: handleCompleteVoiceToText,
+        onCancel: () => {
+          isVoiceToTextActive = false;
+          voiceToTextPosition = null;
+          render();
+        },
+      });
+    } else if (isRecordingInlineVoice && recorderSlot) {
       cleanupRecorder = mountInlineVoiceRecorder(recorderSlot, {
         onComplete: handleCompleteInlineVoice,
         onCancel: () => {
@@ -1462,7 +1537,7 @@ export function renderJournalView(
       render();
     });
     container.querySelector('[data-j-voice-top]')?.addEventListener('click', handleStartInlineVoiceRecord);
-    container.querySelector('[data-j-voice-bottom]')?.addEventListener('click', handleStartInlineVoiceRecord);
+    container.querySelector('[data-j-voice-bottom]')?.addEventListener('click', handleStartVoiceToText);
     container.querySelector('[data-j-record-inline]')?.addEventListener('click', handleStartInlineVoiceRecord);
 
     container.querySelector('[data-j-export-all]')?.addEventListener('click', () => {

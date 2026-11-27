@@ -1,361 +1,387 @@
-import { escapeHtml, renderIcons } from '../utils/dom.js';
+import { api } from '../api.js';
+import { escapeHtml, renderIcons, todayIso } from '../utils/dom.js';
 
-export const AFFIRMATION_LIBRARY = [
+const CURATED_AFFIRMATIONS = [
   {
-    id: 'aff_1',
-    quote: 'You are allowed to move at your own gentle pace. Growth is not a race, it is an unfolding.',
-    category: 'Calm',
-    author: 'BORAH Wisdom',
-    reflectionPrompt: 'Where in your life can you give yourself permission to slow down and breathe today?',
+    quote: 'Steady progress every day builds meaningful, lasting work.',
+    prompt: 'What small step moved my work or personal goals forward today?',
+    tag: 'Clarity & Progress',
   },
   {
-    id: 'aff_2',
-    quote: 'You do not need to prove your worth to exist peacefully in this world. You are already enough.',
-    category: 'Self-Worth',
-    author: 'Daily Grace',
-    reflectionPrompt: 'What is one thing you appreciate about who you are, independent of what you achieve?',
+    quote: 'My time and attention are valuable; I invest them with calm intention.',
+    prompt: 'Where did my focused attention create the most value today?',
+    tag: 'Intentional Focus',
   },
   {
-    id: 'aff_3',
-    quote: 'Storms pass, and the quiet earth remains. You have survived difficult days before, and you will thrive again.',
-    category: 'Resilience',
-    author: 'BORAH Sanctuary',
-    reflectionPrompt: 'What strength inside you carried you through your last challenging moment?',
+    quote: 'Every lesson taught, task completed, and note captured shapes tomorrow.',
+    prompt: 'What accomplishment or insight from today am I proud of?',
+    tag: 'Meaningful Impact',
   },
   {
-    id: 'aff_4',
-    quote: 'Gratitude turns what we have into enough, and more. Notice the ordinary wonders of this day.',
-    category: 'Gratitude',
-    author: 'Mindful Heart',
-    reflectionPrompt: 'Name three simple sensory comforts around you right now that make you feel grounded.',
+    quote: 'Rest and reflection are part of sustainable productivity, never a detour.',
+    prompt: 'How did I protect space to recharge and stay balanced today?',
+    tag: 'Sustainable Balance',
   },
   {
-    id: 'aff_5',
-    quote: 'Small steps taken consistently create profound transformations. Honor your quiet efforts.',
-    category: 'Growth',
-    author: 'Gentle Progress',
-    reflectionPrompt: 'What is one tiny victory or step forward you took recently that deserves recognition?',
+    quote: 'I approach challenges with patience, curiosity, and quiet confidence.',
+    prompt: 'What challenge did I handle calmly today, and what did it teach me?',
+    tag: 'Calm Resilience',
   },
   {
-    id: 'aff_6',
-    quote: 'Speak to yourself today with the tenderness and patience you would offer your dearest friend.',
-    category: 'Self-Worth',
-    author: 'Self-Compassion',
-    reflectionPrompt: 'What kind words does your heart need to hear from yourself right now?',
+    quote: 'Organization gives my mind the freedom to think creatively and deeply.',
+    prompt: 'What priority can I organize clearly for tomorrow so my mind stays light?',
+    tag: 'Clear Mind',
   },
   {
-    id: 'aff_7',
-    quote: 'You hold the courage to start fresh every single sunrise. Yesterday is already behind you.',
-    category: 'Courage',
-    author: 'Morning Dawn',
-    reflectionPrompt: 'What is one fresh intention or hope you want to invite into your world today?',
+    quote: 'Small consistent habits quietly transform weeks into milestones.',
+    prompt: 'Which daily habit helped me stay grounded this week?',
+    tag: 'Daily Rhythm',
   },
   {
-    id: 'aff_8',
-    quote: 'Let go of what you cannot control. Protect your peace like the precious treasure it is.',
-    category: 'Calm',
-    author: 'Inner Sanctuary',
-    reflectionPrompt: 'What heavy expectation or worry can you gently put down for the rest of today?',
-  },
-  {
-    id: 'aff_9',
-    quote: 'Your sensitivity and depth are not weaknesses; they are your compass and superpower.',
-    category: 'Self-Worth',
-    author: 'BORAH Reflection',
-    reflectionPrompt: 'How has your empathy or deep feeling helped someone or enriched your life?',
-  },
-  {
-    id: 'aff_10',
-    quote: 'Trust the timing of your life. Even when seeds are hidden in the dark soil, they are growing.',
-    category: 'Patience',
-    author: 'Silent Bloom',
-    reflectionPrompt: 'What dream or project is quietly brewing in your life right now?',
-  },
-  {
-    id: 'aff_11',
-    quote: 'There is profound beauty in simply being present, breathing in, and letting the moment be.',
-    category: 'Calm',
-    author: 'Zen Breeze',
-    reflectionPrompt: 'Take three deep breaths. What does your body feel like when you let your shoulders drop?',
-  },
-  {
-    id: 'aff_12',
-    quote: 'You are worthy of unconditional rest. You do not need to earn the right to rest and recharge.',
-    category: 'Calm',
-    author: 'BORAH Care',
-    reflectionPrompt: 'How will you give yourself restorative rest without feeling guilty today?',
-  },
-  {
-    id: 'aff_13',
-    quote: 'Every day is a canvas of quiet miracles waiting for your attention to awaken them.',
-    category: 'Gratitude',
-    author: 'Wonder & Light',
-    reflectionPrompt: 'What was the prettiest or most heartwarming thing you saw in the last 24 hours?',
-  },
-  {
-    id: 'aff_14',
-    quote: 'Your voice matters, your feelings are valid, and your journey is sacred.',
-    category: 'Self-Worth',
-    author: 'Inner Anchor',
-    reflectionPrompt: 'What truth is your inner self wanting to express openly today?',
+    quote: 'I celebrate completed efforts without measuring my worth by endless checklists.',
+    prompt: 'What effort deserves appreciation today, regardless of what remains on my list?',
+    tag: 'Self-Respect',
   },
 ];
 
-const CATEGORY_COLORS = {
-  Calm: {
-    bg: 'bg-teal-50 dark:bg-teal-950/40',
-    text: 'text-teal-700 dark:text-teal-300',
-    border: 'border-teal-200/60 dark:border-teal-800/40',
-  },
-  'Self-Worth': {
-    bg: 'bg-purple-50 dark:bg-purple-950/40',
-    text: 'text-purple-700 dark:text-purple-300',
-    border: 'border-purple-200/60 dark:border-purple-800/40',
-  },
-  Resilience: {
-    bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-700 dark:text-amber-300',
-    border: 'border-amber-200/60 dark:border-amber-800/40',
-  },
-  Gratitude: {
-    bg: 'bg-rose-50 dark:bg-rose-950/40',
-    text: 'text-rose-700 dark:text-rose-300',
-    border: 'border-rose-200/60 dark:border-rose-800/40',
-  },
-  Growth: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-    text: 'text-emerald-700 dark:text-emerald-300',
-    border: 'border-emerald-200/60 dark:border-emerald-800/40',
-  },
-  Courage: {
-    bg: 'bg-sky-50 dark:bg-sky-950/40',
-    text: 'text-sky-700 dark:text-sky-300',
-    border: 'border-sky-200/60 dark:border-sky-800/40',
-  },
-};
-
-const FAVORITES_STORAGE_KEY = 'borah_favorite_affirmation_ids';
-
-function getDailyAffirmationIndex(date, totalCount) {
-  const year = date.getFullYear();
-  const start = new Date(year, 0, 0);
-  const diff = date.getTime() - start.getTime() + (start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
-  const oneDay = 1000 * 60 * 60 * 24;
-  const dayOfYear = Math.floor(diff / oneDay);
-  return (dayOfYear + year * 7) % totalCount;
+function getInitialIndex(total) {
+  const iso = todayIso();
+  let sum = 0;
+  for (let i = 0; i < iso.length; i += 1) {
+    sum += iso.charCodeAt(i);
+  }
+  return total > 0 ? sum % total : 0;
 }
 
-export function createDailyAffirmationWidget(container, { onReflectInJournal } = {}) {
-  const today = new Date();
-  const dailyIndex = getDailyAffirmationIndex(today, AFFIRMATION_LIBRARY.length);
-  let currentIndex = dailyIndex;
-  let isSpeaking = false;
-  let copied = false;
-  let showPrompt = false;
+export function renderDailyAffirmation(container, { onReflect } = {}) {
+  if (!container) return () => {};
 
-  let favoriteIds = [];
+  let customAffirmations = [];
+  let index = getInitialIndex(CURATED_AFFIRMATIONS.length);
+  let autoRotate = true;
+  let showAddForm = false;
+  let showManageList = false;
+  let saving = false;
+  let statusMsg = '';
+  let disposed = false;
+
+  const favKey = 'borah_fav_affirmations';
+  let favorites = [];
   try {
-    const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
-    favoriteIds = stored ? JSON.parse(stored) : [];
+    favorites = JSON.parse(localStorage.getItem(favKey) || '[]');
+    if (!Array.isArray(favorites)) favorites = [];
   } catch {
-    favoriteIds = [];
+    favorites = [];
   }
 
-  const cancelSpeech = () => {
+  const getAllQuotes = () => [...customAffirmations, ...CURATED_AFFIRMATIONS];
+
+  let rotateTimer = null;
+  const resetRotationTimer = () => {
+    if (rotateTimer) {
+      clearInterval(rotateTimer);
+      rotateTimer = null;
+    }
+    if (autoRotate && !showAddForm && !disposed) {
+      rotateTimer = setInterval(() => {
+        if (disposed || !autoRotate || showAddForm) return;
+        const pool = getAllQuotes();
+        if (pool.length > 1) {
+          index = (index + 1) % pool.length;
+          render();
+        }
+      }, 12000);
+    }
+  };
+
+  const setStatus = (msg) => {
+    statusMsg = msg;
+    render();
+    setTimeout(() => {
+      if (!disposed) {
+        statusMsg = '';
+        render();
+      }
+    }, 2800);
+  };
+
+  const loadCustom = async () => {
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      const res = await api.getAffirmations();
+      if (!disposed && res.success) {
+        customAffirmations = res.affirmations || [];
+        if (customAffirmations.length > 0 && index >= getAllQuotes().length) {
+          index = 0;
+        }
+        render();
       }
     } catch {}
-    isSpeaking = false;
   };
 
   const render = () => {
-    const current = AFFIRMATION_LIBRARY[currentIndex] || AFFIRMATION_LIBRARY[0];
-    const isDailyQuote = currentIndex === dailyIndex;
-    const isFavorited = favoriteIds.includes(current.id);
-    const categoryStyle = CATEGORY_COLORS[current.category] || {
-      bg: 'bg-purple-50 dark:bg-purple-950/40',
-      text: 'text-purple-700 dark:text-purple-300',
-      border: 'border-purple-200 dark:border-purple-800',
-    };
-    const dateFormatted = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (disposed) return;
+
+    const pool = getAllQuotes();
+    const safeIdx = pool.length ? index % pool.length : 0;
+    const item = pool[safeIdx] || CURATED_AFFIRMATIONS[0];
+    const isFav = favorites.includes(item.quote);
+
+    const addFormHtml = showAddForm
+      ? `
+      <form data-aff-form class="mt-4 pt-4 border-t border-purple-100 dark:border-purple-800/60 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100">Add Your Own Custom Affirmation</h4>
+          <button type="button" data-aff-cancel-add class="text-xs text-slate-400 hover:text-slate-600 cursor-pointer">Cancel</button>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Affirmation / Inspirational Quote *</label>
+          <textarea name="quote" required rows="2" placeholder="e.g. I bring patience, clarity, and genuine care to every class I teach."
+            class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Reflection Prompt (Optional)</label>
+            <input type="text" name="prompt" placeholder="e.g. What gave me energy today?"
+              class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Theme / Tag (Optional)</label>
+            <input type="text" name="tag" value="Personal" placeholder="e.g. Focus, Teaching, Balance"
+              class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="submit" ${saving ? 'disabled' : ''} class="px-4 py-1.5 rounded-xl text-xs font-semibold borah-btn-sage cursor-pointer disabled:opacity-50">
+            ${saving ? 'Saving...' : 'Save Custom Affirmation'}
+          </button>
+        </div>
+      </form>`
+      : '';
+
+    const manageHtml = showManageList
+      ? `
+      <div class="mt-4 pt-4 border-t border-purple-100 dark:border-purple-800/60 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Your Custom Affirmations (${customAffirmations.length})</span>
+          <button type="button" data-aff-close-manage class="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
+        </div>
+        ${
+          customAffirmations.length === 0
+            ? `<p class="text-xs text-slate-400">You haven't added any custom affirmations yet.</p>`
+            : `<div class="space-y-2">
+                ${customAffirmations
+                  .map(
+                    (c, idx) => `
+                  <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs">
+                    <button type="button" data-aff-jump="${idx}" class="text-left flex-1 cursor-pointer hover:text-emerald-700">
+                      <div class="font-serif italic text-slate-800 dark:text-slate-100">"${escapeHtml(c.quote)}"</div>
+                      <div class="text-[10px] text-slate-400 mt-0.5">${escapeHtml(c.tag || 'Personal')}</div>
+                    </button>
+                    <button type="button" data-aff-del="${escapeHtml(c.id)}" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer" title="Delete custom affirmation">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>`
+                  )
+                  .join('')}
+              </div>`
+        }
+      </div>`
+      : '';
 
     container.innerHTML = `
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50/70 via-rose-50/40 to-purple-50/50 dark:from-slate-900 dark:via-slate-900/90 dark:to-purple-950/30 border border-amber-200/80 dark:border-purple-900/40 p-6 sm:p-7 shadow-xs transition-all">
-        <div class="absolute -top-12 -right-12 w-36 h-36 bg-amber-200/20 dark:bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-rose-200/20 dark:bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-        <div class="relative z-10 flex items-center justify-between gap-3 mb-4">
-          <div class="flex items-center gap-2 flex-wrap">
-            <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-slate-800/90 text-amber-800 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/40 shadow-2xs">
-              <i data-lucide="sparkles" class="w-3 h-3 text-amber-500 animate-pulse"></i>
-              <span>${isDailyQuote ? `Daily Affirmation · ${escapeHtml(dateFormatted)}` : 'Inspirational Affirmation'}</span>
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-purple-200/80 dark:border-purple-900/60 shadow-xs">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="space-y-1.5 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                <i data-lucide="sparkles" class="w-3 h-3"></i> Daily Affirmations
+              </span>
+              ${
+                item.is_custom
+                  ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">Custom</span>`
+                  : ''
+              }
+              <span class="text-[11px] font-medium text-slate-400">${escapeHtml(item.tag || 'Inspiration')}</span>
+              <span class="text-[10px] font-mono text-slate-400">(${safeIdx + 1}/${pool.length})</span>
+              ${statusMsg ? `<span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">${escapeHtml(statusMsg)}</span>` : ''}
             </div>
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${categoryStyle.bg} ${categoryStyle.text} ${categoryStyle.border}">
-              ${escapeHtml(current.category)}
-            </span>
+            <p class="text-sm sm:text-base font-serif italic text-slate-800 dark:text-slate-100 leading-relaxed">
+              "${escapeHtml(item.quote)}"
+            </p>
+            ${
+              item.prompt
+                ? `<p class="text-[11px] text-slate-500 dark:text-slate-400">Reflection prompt: ${escapeHtml(item.prompt)}</p>`
+                : ''
+            }
           </div>
 
-          <div class="flex items-center gap-1 shrink-0">
-            <button type="button" data-aff-speak class="p-2 rounded-xl text-xs transition-colors cursor-pointer ${
-              isSpeaking
-                ? 'bg-purple-600 text-white shadow-xs animate-pulse ring-2 ring-purple-300'
-                : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-white/80 dark:hover:bg-slate-800'
-            }" title="${isSpeaking ? 'Stop speech' : 'Listen to affirmation'}">
-              <i data-lucide="${isSpeaking ? 'volume-x' : 'volume-2'}" class="w-4 h-4"></i>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" data-aff-prev class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 cursor-pointer" title="Previous affirmation">
+              <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
             </button>
-
-            <button type="button" data-aff-fav class="p-2 rounded-xl text-xs transition-colors cursor-pointer ${
-              isFavorited
-                ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/50'
-                : 'text-slate-500 dark:text-slate-400 hover:text-rose-500 hover:bg-white/80 dark:hover:bg-slate-800'
-            }" title="${isFavorited ? 'Saved in favorites' : 'Save to favorites'}">
-              <i data-lucide="heart" class="w-4 h-4 ${isFavorited ? 'fill-rose-500 text-rose-500' : ''}"></i>
+            <button type="button" data-aff-next class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 cursor-pointer" title="Next affirmation">
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
             </button>
-
-            <button type="button" data-aff-copy class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-800 text-xs transition-colors cursor-pointer" title="Copy quote">
-              <i data-lucide="${copied ? 'check' : 'copy'}" class="w-4 h-4 ${copied ? 'text-emerald-500' : ''}"></i>
+            <button type="button" data-aff-toggle-auto class="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border border-slate-200 dark:border-slate-700 cursor-pointer ${
+              autoRotate
+                ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
+                : 'bg-slate-50 dark:bg-slate-800 text-slate-500'
+            }" title="Toggle automatic quote rotation">
+              ${autoRotate ? 'Auto-Rotate On' : 'Paused'}
             </button>
-          </div>
-        </div>
-
-        <div class="relative z-10 my-3">
-          <div class="flex items-start gap-3">
-            <i data-lucide="quote" class="w-7 h-7 text-amber-400/50 dark:text-purple-400/40 shrink-0 rotate-180 -mt-1 hidden sm:block"></i>
-            <div class="flex-1">
-              <blockquote class="text-base sm:text-lg font-serif italic font-medium text-slate-800 dark:text-slate-100 leading-relaxed">
-                &ldquo;${escapeHtml(current.quote)}&rdquo;
-              </blockquote>
-              <p class="text-xs font-sans font-medium text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
-                <span>— ${escapeHtml(current.author)}</span>
-                ${isDailyQuote ? `<span class="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-semibold">Today's Choice</span>` : ''}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        ${showPrompt ? `
-          <div class="relative z-10 mt-3 p-3.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-amber-200/60 dark:border-purple-800/40 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in duration-200">
-            <div class="flex items-start gap-2">
-              <i data-lucide="feather" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"></i>
-              <div class="flex-1">
-                <span class="font-semibold text-slate-800 dark:text-slate-100">Mindful Reflection:</span>
-                <p class="mt-0.5 italic text-slate-600 dark:text-slate-300 font-serif">${escapeHtml(current.reflectionPrompt)}</p>
-              </div>
-            </div>
-          </div>` : ''}
-
-        <div class="relative z-10 mt-5 pt-3.5 border-t border-amber-200/50 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
-          <div class="flex items-center gap-2">
-            <button type="button" data-aff-next class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 bg-white/90 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95" title="Draw a fresh uplifting affirmation">
-              <i data-lucide="shuffle" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"></i>
-              <span>Draw Another</span>
+            <button type="button" data-aff-fav class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs cursor-pointer transition-colors ${
+              isFav
+                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 border-rose-200 dark:border-rose-800'
+                : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-rose-500'
+            }" title="${isFav ? 'Saved to favorites' : 'Save affirmation'}">
+              <i data-lucide="heart" class="w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}"></i>
             </button>
-
-            ${!isDailyQuote ? `
-              <button type="button" data-aff-today class="text-[11px] text-amber-700 dark:text-amber-400 hover:underline cursor-pointer font-medium">
-                Back to Today's
-              </button>` : ''}
-
-            <button type="button" data-aff-toggle-prompt class="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-2 py-1 rounded-lg transition-colors cursor-pointer">
-              ${showPrompt ? 'Hide Reflection' : 'Reflection Prompt'}
+            <button type="button" data-aff-open-add class="px-3 py-2 rounded-xl text-xs font-semibold borah-btn-blue flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Add Custom</span>
             </button>
-          </div>
-
-          ${onReflectInJournal ? `
-            <button type="button" data-aff-reflect class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95">
+            ${
+              customAffirmations.length > 0
+                ? `<button type="button" data-aff-manage class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 cursor-pointer">
+                    Custom (${customAffirmations.length})
+                  </button>`
+                : ''
+            }
+            <button type="button" data-aff-reflect class="px-3.5 py-2 rounded-xl text-xs font-semibold borah-btn-sage flex items-center gap-1.5 cursor-pointer shadow-xs">
               <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
               <span>Reflect in Journal</span>
-            </button>` : ''}
+            </button>
+          </div>
         </div>
+        ${addFormHtml}
+        ${manageHtml}
       </div>
     `;
 
     renderIcons(container);
 
+    container.querySelector('[data-aff-prev]')?.addEventListener('click', () => {
+      const len = getAllQuotes().length;
+      index = (index - 1 + len) % len;
+      resetRotationTimer();
+      render();
+    });
+
     container.querySelector('[data-aff-next]')?.addEventListener('click', () => {
-      cancelSpeech();
-      currentIndex = (currentIndex + 1) % AFFIRMATION_LIBRARY.length;
-      showPrompt = false;
+      const len = getAllQuotes().length;
+      index = (index + 1) % len;
+      resetRotationTimer();
       render();
     });
 
-    container.querySelector('[data-aff-today]')?.addEventListener('click', () => {
-      cancelSpeech();
-      currentIndex = dailyIndex;
-      showPrompt = false;
-      render();
-    });
-
-    container.querySelector('[data-aff-toggle-prompt]')?.addEventListener('click', () => {
-      showPrompt = !showPrompt;
+    container.querySelector('[data-aff-toggle-auto]')?.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      resetRotationTimer();
       render();
     });
 
     container.querySelector('[data-aff-fav]')?.addEventListener('click', () => {
-      const id = current.id;
-      favoriteIds = favoriteIds.includes(id)
-        ? favoriteIds.filter((f) => f !== id)
-        : [...favoriteIds, id];
+      if (favorites.includes(item.quote)) {
+        favorites = favorites.filter((q) => q !== item.quote);
+      } else {
+        favorites = [...favorites, item.quote];
+      }
       try {
-        localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteIds));
+        localStorage.setItem(favKey, JSON.stringify(favorites));
       } catch {}
       render();
     });
 
-    container.querySelector('[data-aff-copy]')?.addEventListener('click', () => {
-      const textToCopy = `"${current.quote}" — ${current.author}`;
-      navigator.clipboard?.writeText(textToCopy).catch(() => {});
-      copied = true;
+    container.querySelector('[data-aff-open-add]')?.addEventListener('click', () => {
+      showAddForm = !showAddForm;
+      if (showAddForm) showManageList = false;
+      resetRotationTimer();
       render();
-      setTimeout(() => {
-        copied = false;
-        render();
-      }, 2000);
     });
 
-    container.querySelector('[data-aff-speak]')?.addEventListener('click', () => {
-      if (!('speechSynthesis' in window)) return;
-      if (isSpeaking) {
-        cancelSpeech();
+    container.querySelector('[data-aff-cancel-add]')?.addEventListener('click', () => {
+      showAddForm = false;
+      resetRotationTimer();
+      render();
+    });
+
+    container.querySelector('[data-aff-manage]')?.addEventListener('click', () => {
+      showManageList = !showManageList;
+      if (showManageList) showAddForm = false;
+      render();
+    });
+
+    container.querySelector('[data-aff-close-manage]')?.addEventListener('click', () => {
+      showManageList = false;
+      render();
+    });
+
+    container.querySelectorAll('[data-aff-jump]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        index = Number(btn.getAttribute('data-aff-jump') || 0);
+        showManageList = false;
+        resetRotationTimer();
         render();
-        return;
+      });
+    });
+
+    container.querySelectorAll('[data-aff-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-aff-del');
+        try {
+          await api.deleteAffirmation(id);
+          customAffirmations = customAffirmations.filter((c) => c.id !== id);
+          index = 0;
+          setStatus('Custom affirmation removed.');
+        } catch {}
+      });
+    });
+
+    container.querySelector('[data-aff-form]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const quote = String(fd.get('quote') || '').trim();
+      const prompt = String(fd.get('prompt') || '').trim();
+      const tag = String(fd.get('tag') || 'Personal').trim() || 'Personal';
+      if (!quote) return;
+
+      saving = true;
+      render();
+      try {
+        const res = await api.createAffirmation({ quote, prompt, tag });
+        if (!disposed && res.success && res.affirmation) {
+          customAffirmations = [res.affirmation, ...customAffirmations];
+          index = 0;
+          showAddForm = false;
+          saving = false;
+          resetRotationTimer();
+          setStatus('Custom affirmation saved!');
+        }
+      } catch {
+        if (!disposed) {
+          saving = false;
+          render();
+        }
       }
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(current.quote);
-      utterance.rate = 0.85;
-      utterance.pitch = 1.05;
-      const voices = window.speechSynthesis.getVoices();
-      const gentleVoice = voices.find(
-        (v) =>
-          (v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Google') || v.name.includes('Karen')) &&
-          v.lang.startsWith('en')
-      );
-      if (gentleVoice) utterance.voice = gentleVoice;
-      utterance.onstart = () => {
-        isSpeaking = true;
-        render();
-      };
-      utterance.onend = () => {
-        isSpeaking = false;
-        render();
-      };
-      utterance.onerror = () => {
-        isSpeaking = false;
-        render();
-      };
-      window.speechSynthesis.speak(utterance);
     });
 
     container.querySelector('[data-aff-reflect]')?.addEventListener('click', () => {
-      if (onReflectInJournal) {
-        const promptText = `Daily Affirmation: "${current.quote}"\n\nReflection: ${current.reflectionPrompt}\n\n`;
-        onReflectInJournal(promptText, `Reflection: ${current.category}`);
+      if (onReflect) {
+        const body = item.prompt ? `${item.quote}\n\n${item.prompt}` : item.quote;
+        onReflect(body, 'Daily Affirmation Reflection');
       }
     });
   };
 
   render();
-  return () => cancelSpeech();
+  loadCustom();
+  resetRotationTimer();
+
+  return () => {
+    disposed = true;
+    if (rotateTimer) {
+      clearInterval(rotateTimer);
+      rotateTimer = null;
+    }
+  };
 }

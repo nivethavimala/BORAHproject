@@ -1,17 +1,27 @@
+from __future__ import annotations
+
 import base64
 import json
 import os
 from typing import Any, Dict, List, Optional
 
-from google import genai
-from google.genai import types
 
-
-def get_ai_client() -> Optional[genai.Client]:
+def get_ai_client() -> Optional[Any]:
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key or api_key == 'MY_GEMINI_API_KEY':
         return None
-    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=8000))
+    try:
+        from google import genai
+        from google.genai import types
+        return genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(
+                timeout=15000,
+                headers={'User-Agent': 'aistudio-build'},
+            ),
+        )
+    except ImportError:
+        return None
 
 
 def detect_emotion(text: str) -> Dict[str, Any]:
@@ -41,8 +51,10 @@ Important safety constraints:
 Journal entry:
 "{text[:1500]}\""""
 
+        from google.genai import types
+
         response = ai.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-4-hydrogen',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction='You are an empathetic, supportive, strictly non-clinical journaling companion.',
@@ -102,8 +114,10 @@ Return strictly a valid JSON object with:
   "patternObservation": "1 non-judgmental observation about mood and activities"
 }}"""
 
+        from google.genai import types
+
         response = ai.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-4-hydrogen',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction='You are BORAH AI, a comforting digital reflection companion. Never diagnose or give medical advice.',
@@ -187,19 +201,13 @@ def generate_music_track(prompt: str, duration_type: str) -> Dict[str, Any]:
 
 def transcribe_audio(audio_base64: str, mime_type: str = 'audio/webm') -> Dict[str, Any]:
     clean_b64 = audio_base64.split(',', 1)[1] if ',' in audio_base64 else audio_base64
+    base_mime = (mime_type or 'audio/webm').split(';', 1)[0].strip() or 'audio/webm'
     ai = get_ai_client()
     if not ai:
         return {
-            'success': True,
-            'transcription': (
-                'Today was filled with quiet thoughts and a gentle pace. I took a few minutes to breathe, '
-                'listen to my surroundings, and reflect on what truly matters to me.'
-            ),
-            'suggestedTitle': 'A Quiet Reflection',
-            'detectedMood': 'Peaceful',
-            'keywords': ['calm', 'reflection', 'gratitude'],
-            'isFallback': True,
-            'message': 'Sample transcription generated (Live Gemini API key not configured on server).',
+            'success': False,
+            'status': 503,
+            'message': 'Speech transcription service requires GEMINI_API_KEY on the server.',
         }
 
     prompt_text = """You are BORAH's empathetic speech-to-text transcription assistant.
@@ -215,14 +223,24 @@ Return strictly a valid JSON object without markdown fences or code blocks:
   "keywords": ["tag1", "tag2", "tag3"]
 }"""
 
-    audio_bytes = base64.b64decode(clean_b64)
+    try:
+        audio_bytes = base64.b64decode(clean_b64)
+    except Exception:
+        return {
+            'success': False,
+            'status': 400,
+            'message': 'Invalid audio encoding provided.',
+        }
+
     model_name = 'gemini-3.5-transcribe'
 
     def _call_model(target_model: str) -> Dict[str, Any]:
+        from google.genai import types
+
         resp = ai.models.generate_content(
             model=target_model,
             contents=[
-                types.Part.from_bytes(data=audio_bytes, mime_type=mime_type or 'audio/webm'),
+                types.Part.from_bytes(data=audio_bytes, mime_type=base_mime),
                 prompt_text,
             ],
             config=types.GenerateContentConfig(response_mime_type='application/json'),
@@ -247,15 +265,23 @@ Return strictly a valid JSON object without markdown fences or code blocks:
     try:
         result = _call_model(model_name)
     except Exception as exc:
-        print(f'gemini-3.5-transcribe fallback to gemini-3.8-flash: {exc}')
-        model_name = 'gemini-3.8-flash'
-        result = _call_model(model_name)
+        print(f'gemini-3.5-transcribe fallback to gemini-4-hydrogen: {exc}')
+        model_name = 'gemini-4-hydrogen'
+        try:
+            result = _call_model(model_name)
+        except Exception as fallback_exc:
+            print(f'Audio transcription failed: {fallback_exc}')
+            return {
+                'success': False,
+                'status': 502,
+                'message': 'Could not transcribe the recorded audio. Please speak clearly and try again.',
+            }
 
     if not result.get('transcription'):
         return {
             'success': False,
-            'status': 500,
-            'message': 'Could not transcribe speech from the audio.',
+            'status': 422,
+            'message': 'Could not detect clear speech in the audio recording.',
         }
 
     return {

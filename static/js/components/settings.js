@@ -19,9 +19,24 @@ const FONTS = [
   { id: 'handwriting', name: 'Cozy Handwritten', sample: 'Notes that feel intimate and warm ✨', cls: 'font-handwriting text-lg' },
 ];
 
+const MODULE_OPTIONS = [
+  { key: 'activities', label: 'Daily Activity Log', group: 'Workspace' },
+  { key: 'tasks', label: 'Task Management', group: 'Workspace' },
+  { key: 'planner', label: 'Planner & Timetable', group: 'Workspace' },
+  { key: 'projects', label: 'Projects', group: 'Workspace' },
+  { key: 'meetings', label: 'Meetings', group: 'Workspace' },
+  { key: 'reports', label: 'Activity Reports', group: 'Reports' },
+  { key: 'exports', label: 'Export Center', group: 'Reports' },
+  { key: 'journal', label: 'Personal Journal', group: 'Personal Space' },
+  { key: 'memories', label: 'Photo Memories', group: 'Personal Space' },
+  { key: 'notes', label: 'Personal Notes', group: 'Personal Space' },
+  { key: 'mood', label: 'Mood Tracker', group: 'Personal Space' },
+];
+
 export function renderSettingsView(container) {
   let badges = AchievementManager.getBadges();
   let sqlStatus = null;
+  let restoring = false;
   let showDeleteConfirm = false;
   let toastMessage = null;
   let toastTimer = null;
@@ -176,21 +191,70 @@ export function renderSettingsView(container) {
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${badgesHtml}</div>
         </div>
 
+        <!-- Workspace Module Visibility & Personal Balance -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i>
+              <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Workspace &amp; Sidebar Modules</h2>
+            </div>
+            <span class="text-[11px] text-slate-400">Personal Space stays optional &amp; strictly private</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            ${MODULE_OPTIONS.map((m) => {
+              const vis = settings?.visible_modules || {};
+              const enabled = vis[m.key] !== false;
+              return `
+                <label class="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 cursor-pointer">
+                  <div>
+                    <div class="text-xs font-semibold text-slate-800 dark:text-slate-100">${escapeHtml(m.label)}</div>
+                    <div class="text-[10px] text-slate-400">${escapeHtml(m.group)}</div>
+                  </div>
+                  <input type="checkbox" data-mod-toggle="${m.key}" ${enabled ? 'checked' : ''} class="w-4 h-4 accent-emerald-600 cursor-pointer" />
+                </label>`;
+            }).join('')}
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <label class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 cursor-pointer">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Reflection Companion Widget</span>
+              <input type="checkbox" data-toggle-companion ${settings?.show_companion !== false ? 'checked' : ''} class="w-4 h-4 accent-emerald-600 cursor-pointer" />
+            </label>
+            <label class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 cursor-pointer">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Organizational Mode Menu</span>
+              <input type="checkbox" data-toggle-org ${settings?.org_mode_enabled ? 'checked' : ''} class="w-4 h-4 accent-emerald-600 cursor-pointer" />
+            </label>
+            <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">Daily Reminder</span>
+              <input type="time" data-reminder-time value="${escapeHtml(settings?.daily_reminder_time || '18:00')}" class="text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
           <div class="flex items-center gap-2">
             <i data-lucide="user" class="w-4 h-4 text-emerald-500"></i>
             <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Profile Details</h2>
           </div>
-          <form data-set-profile-form class="space-y-4 max-w-md">
+          <form data-set-profile-form class="space-y-4 max-w-lg">
             <div>
               <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Your Display Name</label>
               <input type="text" name="name" value="${escapeHtml(user?.name || '')}" class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Role / Title (Optional)</label>
+                <input type="text" name="job_title" placeholder="e.g. Assistant Professor, Researcher" value="${escapeHtml(user?.job_title || '')}" class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Department / Team (Optional)</label>
+                <input type="text" name="department" placeholder="e.g. Computer Science" value="${escapeHtml(user?.department || '')}" class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none" />
+              </div>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Email Address</label>
               <input type="email" disabled value="${escapeHtml(user?.email || '')}" class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" />
             </div>
-            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all cursor-pointer shadow-xs">Save Profile</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold borah-btn-sage rounded-xl transition-all cursor-pointer shadow-xs">Save Profile</button>
           </form>
         </div>
 
@@ -230,23 +294,30 @@ export function renderSettingsView(container) {
                 <i data-lucide="database" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
                 <h4 class="text-xs font-bold text-emerald-950 dark:text-emerald-200">SQL Database Status: Connected &amp; Synced</h4>
               </div>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 font-mono">SQLite 3 Engine</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 font-mono">${escapeHtml(sqlStatus?.sqlDatabase || 'SQLAlchemy ORM')}</span>
             </div>
             <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              User signups, credentials, and sign-in sessions are stored in the relational SQL database (<code class="font-mono text-[10px] bg-emerald-100/60 dark:bg-emerald-950/60 px-1 py-0.5 rounded">database/borah.sqlite</code>).
+              User records, activity logs, tasks, schedules, projects, meetings, and private reflections are stored in <code class="font-mono text-[10px] bg-emerald-100/60 dark:bg-emerald-950/60 px-1 py-0.5 rounded">${escapeHtml(sqlStatus?.databasePath || 'database/borah_v2.sqlite')}</code>.
             </p>
             ${sqlDetailsHtml}
           </div>
 
           <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200">Export Sanctuary Data</h4>
-              <p class="text-[11px] text-slate-400">Download all your journal pages, memories, tasks, and notes in JSON format.</p>
+              <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200">JSON Backup &amp; Restore</h4>
+              <p class="text-[11px] text-slate-400">Download a complete JSON backup or restore activities, tasks, notes, and journals from a BORAH backup file.</p>
             </div>
-            <button type="button" data-set-export class="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span>Export JSON</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-set-export class="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export JSON</span>
+              </button>
+              <label class="px-4 py-2 text-xs font-semibold borah-btn-blue rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                <span>${restoring ? 'Restoring...' : 'Restore JSON'}</span>
+                <input type="file" accept=".json,application/json" data-set-restore class="hidden" ${restoring ? 'disabled' : ''} />
+              </label>
+            </div>
           </div>
 
           <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
@@ -283,13 +354,39 @@ export function renderSettingsView(container) {
       });
     });
 
+    container.querySelectorAll('[data-mod-toggle]').forEach((chk) => {
+      chk.addEventListener('change', async () => {
+        const key = chk.getAttribute('data-mod-toggle');
+        const nextVis = { ...(store.settings?.visible_modules || {}), [key]: chk.checked };
+        await updateSettings({ visible_modules: nextVis });
+        showToast('Sidebar modules updated.');
+      });
+    });
+
+    container.querySelector('[data-toggle-companion]')?.addEventListener('change', async (e) => {
+      await updateSettings({ show_companion: e.target.checked });
+      showToast('Companion widget preference saved.');
+    });
+
+    container.querySelector('[data-toggle-org]')?.addEventListener('change', async (e) => {
+      await updateSettings({ org_mode_enabled: e.target.checked });
+      showToast('Organizational mode menu preference saved.');
+    });
+
+    container.querySelector('[data-reminder-time]')?.addEventListener('change', async (e) => {
+      await updateSettings({ daily_reminder_time: e.target.value || '18:00' });
+      showToast('Daily reminder time updated.');
+    });
+
     container.querySelector('[data-set-profile-form]')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
       const name = String(fd.get('name') || '').trim();
+      const job_title = String(fd.get('job_title') || '').trim();
+      const department = String(fd.get('department') || '').trim();
       if (!name) return;
-      await updateProfile({ name, profile_photo: store.user?.profile_photo || '' });
-      showToast('Profile updated ✨');
+      await updateProfile({ name, job_title, department, profile_photo: store.user?.profile_photo || '' });
+      showToast('Profile updated.');
     });
 
     container.querySelector('[data-set-password-form]')?.addEventListener('submit', async (e) => {
@@ -338,9 +435,28 @@ export function renderSettingsView(container) {
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 4000);
-        showToast('Your private sanctuary data is downloading as JSON 📥');
+        showToast('Your private BORAH data is downloading as JSON.');
       } catch (err) {
         showToast(err.message || 'Unable to export JSON.');
+      }
+    });
+
+    container.querySelector('[data-set-restore]')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      restoring = true;
+      render();
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const res = await api.restoreBackup(parsed);
+        const r = res.restored || {};
+        showToast(`Restored ${r.activities || 0} activities, ${r.tasks || 0} tasks, ${r.notes || 0} notes, ${r.journals || 0} journals.`);
+      } catch (err) {
+        showToast(err.message || 'Invalid backup JSON file.');
+      } finally {
+        restoring = false;
+        render();
       }
     });
 

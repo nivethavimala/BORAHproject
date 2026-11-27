@@ -11,6 +11,13 @@ import { createSearchModal } from './components/searchModal.js';
 import { renderNavigation } from './components/navigation.js';
 import { createAiCompanion } from './components/aiCompanion.js';
 import { renderDashboard } from './components/dashboard.js';
+import { renderActivitiesView } from './components/activities.js';
+import { renderProjectsView } from './components/projects.js';
+import { renderMeetingsView } from './components/meetings.js';
+import { renderReportsView } from './components/reports.js';
+import { renderExportsCenterView } from './components/exportsCenter.js';
+import { renderNotificationsView } from './components/notifications.js';
+import { renderOrganizationView } from './components/organization.js';
 import { renderJournalView } from './components/journal.js';
 import { renderMemoriesView } from './components/memories.js';
 import { renderPlannerView } from './components/planner.js';
@@ -61,6 +68,8 @@ function bootBorahApp() {
   let activeTab = 'dashboard';
   let selectedJournalId = null;
   let selectedMemoryId = null;
+  let openActivityModalNext = false;
+  let unreadCount = 0;
   let journalPrompt = null;
   let journalTitle = null;
   let globalReminder = null;
@@ -73,13 +82,38 @@ function bootBorahApp() {
 
   const aiCompanion = createAiCompanion(aiSlot);
 
+  const syncCompanionVisibility = () => {
+    const show = store.settings?.show_companion !== false;
+    aiSlot.classList.toggle('hidden', !show);
+  };
+
+  const refreshUnreadNotifications = async () => {
+    if (!store.user) return;
+    try {
+      const res = await api.getNotifications();
+      if (res.success) {
+        unreadCount = Number(res.unread_count || 0);
+        renderNav();
+      }
+    } catch {}
+  };
+
   const navigateTo = (tab, itemId = null) => {
     activeTab = tab;
+    openActivityModalNext = false;
     if (tab === 'journal' && itemId) {
       selectedJournalId = itemId;
     } else if (tab === 'memories' && itemId) {
       selectedMemoryId = itemId;
     }
+    aiCompanion.setTab(activeTab);
+    renderNav();
+    renderActiveView();
+  };
+
+  const openQuickNewActivity = () => {
+    openActivityModalNext = true;
+    activeTab = 'activities';
     aiCompanion.setTab(activeTab);
     renderNav();
     renderActiveView();
@@ -161,9 +195,10 @@ function bootBorahApp() {
   const renderNav = () => {
     renderNavigation(navSlot, {
       activeTab,
+      unreadCount,
       setActiveTab: (tab) => navigateTo(tab),
       onOpenSearch: () => searchModal.open(),
-      onQuickNewEntry: openQuickNewEntry,
+      onQuickNewActivity: openQuickNewActivity,
       onOpenPurpleUniverse: () => purpleUniverseModal.open(),
     });
   };
@@ -186,9 +221,45 @@ function bootBorahApp() {
       case 'dashboard':
         maybeCleanup = renderDashboard(mainSlot, {
           onNavigate: navigateTo,
-          onOpenQuickJournal: openQuickNewEntry,
+          onOpenQuickActivity: openQuickNewActivity,
           onOpenJournalWithPrompt: openJournalWithPrompt,
         });
+        break;
+      case 'activities': {
+        const shouldOpen = openActivityModalNext;
+        openActivityModalNext = false;
+        maybeCleanup = renderActivitiesView(mainSlot, { openNewModal: shouldOpen });
+        break;
+      }
+      case 'tasks':
+        maybeCleanup = renderTasksView(mainSlot);
+        break;
+      case 'planner':
+        maybeCleanup = renderPlannerView(mainSlot);
+        break;
+      case 'projects':
+        maybeCleanup = renderProjectsView(mainSlot);
+        break;
+      case 'meetings':
+        maybeCleanup = renderMeetingsView(mainSlot);
+        break;
+      case 'reports':
+        maybeCleanup = renderReportsView(mainSlot);
+        break;
+      case 'exports':
+        maybeCleanup = renderExportsCenterView(mainSlot);
+        break;
+      case 'notifications':
+        maybeCleanup = renderNotificationsView(mainSlot, {
+          onNavigate: navigateTo,
+          onUnreadChange: (cnt) => {
+            unreadCount = Number(cnt || 0);
+            renderNav();
+          },
+        });
+        break;
+      case 'organization':
+        maybeCleanup = renderOrganizationView(mainSlot);
         break;
       case 'journal':
         maybeCleanup = renderJournalView(mainSlot, {
@@ -209,12 +280,6 @@ function bootBorahApp() {
           initialMemoryId: selectedMemoryId,
         });
         break;
-      case 'planner':
-        maybeCleanup = renderPlannerView(mainSlot);
-        break;
-      case 'tasks':
-        maybeCleanup = renderTasksView(mainSlot);
-        break;
       case 'mood':
         maybeCleanup = renderMoodView(mainSlot);
         break;
@@ -233,7 +298,7 @@ function bootBorahApp() {
       default:
         maybeCleanup = renderDashboard(mainSlot, {
           onNavigate: navigateTo,
-          onOpenQuickJournal: openQuickNewEntry,
+          onOpenQuickActivity: openQuickNewActivity,
           onOpenJournalWithPrompt: openJournalWithPrompt,
         });
     }
@@ -299,9 +364,11 @@ function bootBorahApp() {
     if (state.user) {
       const userChanged = currentUserId !== state.user.id;
       currentUserId = state.user.id;
+      syncCompanionVisibility();
       if (userChanged) {
         onboardingDismissed = false;
         startReminderLoopForUser();
+        refreshUnreadNotifications();
         renderNav();
         renderActiveView();
       } else {
@@ -315,6 +382,7 @@ function bootBorahApp() {
       });
     } else {
       currentUserId = null;
+      unreadCount = 0;
       stopReminderLoopForUser();
       if (activeViewCleanup) {
         try {

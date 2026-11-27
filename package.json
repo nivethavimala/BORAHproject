@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "bash scripts/start_server.sh",
     "start": "bash scripts/start_server.sh",
-    "build": "python3 -m py_compile app.py backend/*.py scripts/*.py",
+    "build": "bash scripts/build.sh",
     "clean": "rm -rf __pycache__ backend/__pycache__ scripts/__pycache__",
-    "lint": "bash -c 'set -e; python3 -m py_compile app.py backend/*.py scripts/*.py; find static/js -name \"*.js\" -exec node --check {} +'"
+    "lint": "bash -c 'set -e; python3 -m py_compile app.py backend/*.py backend/routes/*.py backend/exports/*.py scripts/*.py; find static/js -name \"*.js\" -exec node --check {} +'"
   }
 }

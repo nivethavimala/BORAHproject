@@ -20,9 +20,13 @@ export function createSearchModal(container, { onNavigate }) {
     if (!body) return;
 
     const totalResults = results
-      ? (results.journals?.length || 0) +
-        (results.memories?.length || 0) +
+      ? (results.activities?.length || 0) +
         (results.tasks?.length || 0) +
+        (results.schedules?.length || 0) +
+        (results.projects?.length || 0) +
+        (results.meetings?.length || 0) +
+        (results.journals?.length || 0) +
+        (results.memories?.length || 0) +
         (results.notes?.length || 0)
       : 0;
 
@@ -42,99 +46,55 @@ export function createSearchModal(container, { onNavigate }) {
       `;
     }
 
+    const renderGroup = (title, icon, tab, items, subFn) => {
+      if (!items?.length) return '';
+      return `<div>
+        <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
+          <i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${escapeHtml(title)} (${items.length})
+        </div>
+        <div class="space-y-1">${items
+          .map(
+            (item) => `
+          <button type="button" data-nav-tab="${tab}" data-nav-id="${escapeHtml(item.id)}" class="w-full p-2.5 rounded-xl hover:bg-emerald-50/60 dark:hover:bg-slate-800/80 text-left transition-colors flex items-center justify-between group cursor-pointer">
+            <div>
+              <div class="text-xs font-semibold text-slate-800 dark:text-slate-200 ${item.completed ? 'line-through opacity-60' : ''}">${escapeHtml(item.title)}</div>
+              <div class="text-[11px] text-slate-500 truncate max-w-md">${escapeHtml(subFn(item))}</div>
+            </div>
+            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0"></i>
+          </button>`
+          )
+          .join('')}</div></div>`;
+    };
+
     if (loading) {
       html += `
         <div class="py-12 text-center text-xs text-slate-400">
-          <span class="inline-block w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-2"></span>
-          <p>Searching your private sanctuary...</p>
+          <span class="inline-block w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2"></span>
+          <p>Searching your BORAH workspace...</p>
         </div>`;
     } else if (query.trim() && totalResults === 0 && !(searchEgg && searchEgg.isEgg)) {
       html += `
         <div class="py-12 text-center text-slate-400 text-xs">
           <p class="text-sm text-slate-500 dark:text-slate-400">No results found for "${escapeHtml(query)}"</p>
-          <p class="mt-1">Try another keyword or search term.</p>
+          <p class="mt-1">Try another activity title, category, task, or keyword.</p>
         </div>`;
     } else if (!query.trim()) {
       html += `
         <div class="py-10 text-center text-xs text-slate-400">
-          <p>Type to search across all your thoughts, plans, and memories.</p>
-          <div class="flex justify-center gap-4 mt-3 text-[11px] text-slate-400">
-            <span>📖 Journals</span><span>📸 Memories</span><span>✅ Tasks</span><span>📝 Notes</span>
+          <p>Search across your professional activities, tasks, schedules, projects, meetings, and personal space.</p>
+          <div class="flex flex-wrap justify-center gap-3 mt-3 text-[11px] text-slate-400">
+            <span>Activities</span><span>•</span><span>Tasks</span><span>•</span><span>Planner</span><span>•</span><span>Projects</span><span>•</span><span>Meetings</span><span>•</span><span>Journals &amp; Notes</span>
           </div>
         </div>`;
     } else if (results && totalResults > 0) {
-      if (results.journals?.length) {
-        html += `<div>
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
-            <i data-lucide="book-open" class="w-3.5 h-3.5"></i> Journal Entries (${results.journals.length})
-          </div>
-          <div class="space-y-1">${results.journals
-            .map(
-              (j) => `
-            <button type="button" data-nav-tab="journal" data-nav-id="${escapeHtml(j.id)}" class="w-full p-2.5 rounded-xl hover:bg-amber-50/60 dark:hover:bg-slate-800/80 text-left transition-colors flex items-center justify-between group cursor-pointer">
-              <div>
-                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-amber-700">${escapeHtml(j.title)}</div>
-                <div class="text-[11px] text-slate-500 truncate max-w-md">${escapeHtml((j.content || '').slice(0, 90))}...</div>
-              </div>
-              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400 group-hover:text-amber-600 shrink-0"></i>
-            </button>`
-            )
-            .join('')}</div></div>`;
-      }
-      if (results.memories?.length) {
-        html += `<div>
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
-            <i data-lucide="camera" class="w-3.5 h-3.5"></i> Memories (${results.memories.length})
-          </div>
-          <div class="space-y-1">${results.memories
-            .map(
-              (m) => `
-            <button type="button" data-nav-tab="memories" data-nav-id="${escapeHtml(m.id)}" class="w-full p-2.5 rounded-xl hover:bg-amber-50/60 dark:hover:bg-slate-800/80 text-left transition-colors flex items-center justify-between group cursor-pointer">
-              <div>
-                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-amber-700">${escapeHtml(m.title)}</div>
-                <div class="text-[11px] text-slate-500 truncate max-w-md">${escapeHtml(m.description || m.location || '')}</div>
-              </div>
-              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400 group-hover:text-amber-600 shrink-0"></i>
-            </button>`
-            )
-            .join('')}</div></div>`;
-      }
-      if (results.tasks?.length) {
-        html += `<div>
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
-            <i data-lucide="check-square" class="w-3.5 h-3.5"></i> Tasks (${results.tasks.length})
-          </div>
-          <div class="space-y-1">${results.tasks
-            .map(
-              (t) => `
-            <button type="button" data-nav-tab="tasks" data-nav-id="${escapeHtml(t.id)}" class="w-full p-2.5 rounded-xl hover:bg-amber-50/60 dark:hover:bg-slate-800/80 text-left transition-colors flex items-center justify-between group cursor-pointer">
-              <div>
-                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200 ${t.completed ? 'line-through opacity-60' : ''}">${escapeHtml(t.title)}</div>
-                <div class="text-[11px] text-slate-500">${escapeHtml(t.category)} · Priority: ${escapeHtml(t.priority)}</div>
-              </div>
-              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400 group-hover:text-amber-600 shrink-0"></i>
-            </button>`
-            )
-            .join('')}</div></div>`;
-      }
-      if (results.notes?.length) {
-        html += `<div>
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
-            <i data-lucide="sticky-note" class="w-3.5 h-3.5"></i> Notes (${results.notes.length})
-          </div>
-          <div class="space-y-1">${results.notes
-            .map(
-              (n) => `
-            <button type="button" data-nav-tab="notes" data-nav-id="${escapeHtml(n.id)}" class="w-full p-2.5 rounded-xl hover:bg-amber-50/60 dark:hover:bg-slate-800/80 text-left transition-colors flex items-center justify-between group cursor-pointer">
-              <div>
-                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(n.title)}</div>
-                <div class="text-[11px] text-slate-500 truncate max-w-md">${escapeHtml((n.content || '').slice(0, 80))}</div>
-              </div>
-              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400 group-hover:text-amber-600 shrink-0"></i>
-            </button>`
-            )
-            .join('')}</div></div>`;
-      }
+      html += renderGroup('Daily Activities', 'clock', 'activities', results.activities, (a) => `${a.activity_date || ''} · ${a.start_time || ''}-${a.end_time || ''} · ${a.category || ''}`);
+      html += renderGroup('Tasks', 'check-square', 'tasks', results.tasks, (t) => `${t.category || ''} · Priority: ${t.priority || ''} · Status: ${t.status || ''}`);
+      html += renderGroup('Planner & Timetable', 'calendar', 'planner', results.schedules, (s) => `${s.date || ''} · ${s.start_time || ''}-${s.end_time || ''} · ${s.event_type || ''}`);
+      html += renderGroup('Projects', 'folder-kanban', 'projects', results.projects, (p) => `${p.code ? p.code + ' · ' : ''}${p.category || ''} · ${p.status || ''}`);
+      html += renderGroup('Meetings', 'users', 'meetings', results.meetings, (m) => `${m.meeting_date || ''} · ${m.participants || m.agenda || ''}`);
+      html += renderGroup('Journal Entries', 'book-open', 'journal', results.journals, (j) => (j.content || '').slice(0, 90));
+      html += renderGroup('Memories', 'camera', 'memories', results.memories, (m) => m.description || m.location || '');
+      html += renderGroup('Personal Notes', 'sticky-note', 'notes', results.notes, (n) => (n.content || '').slice(0, 80));
     }
 
     body.innerHTML = html;
@@ -156,8 +116,8 @@ export function createSearchModal(container, { onNavigate }) {
       <div class="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
         <div class="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
           <div class="flex items-center px-5 py-4 border-b border-slate-100 dark:border-slate-800 gap-3">
-            <i data-lucide="search" class="w-5 h-5 text-amber-500 shrink-0"></i>
-            <input type="text" data-search-input placeholder="Search journal entries, memories, tasks, notes..."
+            <i data-lucide="search" class="w-5 h-5 text-emerald-600 shrink-0"></i>
+            <input type="text" data-search-input placeholder="Search activities, tasks, schedules, projects, meetings, notes..."
               class="w-full text-base bg-transparent text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none" />
             <button type="button" data-search-clear class="hidden p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
               <i data-lucide="x" class="w-4 h-4"></i>

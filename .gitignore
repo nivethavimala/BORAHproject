@@ -1,5 +1,6 @@
 # Python virtual environments & caches
 .venv/
+.py311/
 venv/
 env/
 __pycache__/
@@ -7,6 +8,7 @@ __pycache__/
 *$py.class
 *.egg-info/
 .pytest_cache/
+backend/vendor_wheels/
 
 # Node / Bun leftovers
 node_modules/

@@ -1,3 +1,4 @@
+import { api } from '../api.js';
 import { escapeHtml, renderIcons, sanitizeUrl } from '../utils/dom.js';
 
 function formatTimer(secs) {
@@ -456,3 +457,457 @@ export function mountInlineVoiceMemoCard(container, clip, { isEditing = false, o
     audio.src = '';
   };
 }
+
+const SPEECH_LANGUAGES = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-IN', label: 'English (India)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'ta-IN', label: 'Tamil' },
+  { code: 'hi-IN', label: 'Hindi' },
+  { code: 'es-ES', label: 'Spanish' },
+  { code: 'fr-FR', label: 'French' },
+];
+
+export function mountInlineVoiceToText(container, { onInsertText, onCancel } = {}) {
+  let isListening = false;
+  let isTranscribing = false;
+  let duration = 0;
+  let finalTranscript = '';
+  let interimTranscript = '';
+  let selectedLang = SPEECH_LANGUAGES.some((l) => l.code === navigator.language)
+    ? navigator.language
+    : 'en-US';
+  let errorMessage = null;
+  let statusHint = 'Speak clearly — your words will appear here as text.';
+  let audioLevels = [15, 25, 40, 20, 50, 30, 60, 25, 45, 20, 35, 15];
+
+  let recognition = null;
+  let speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  let speechFailed = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let timerInterval = null;
+  let audioContext = null;
+  let analyser = null;
+  let animationFrame = null;
+  let stream = null;
+  let disposed = false;
+
+  const stopSpeechEngine = () => {
+    if (recognition) {
+      try {
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        recognition.stop();
+      } catch {
+        // Ignore stop errors
+      }
+      recognition = null;
+    }
+  };
+
+  const stopMediaEngine = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+      try {
+        audioContext.close();
+      } catch {
+        // Ignore
+      }
+      audioContext = null;
+    }
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      stream = null;
+    }
+  };
+
+  const cleanup = () => {
+    disposed = true;
+    isListening = false;
+    stopSpeechEngine();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.ondataavailable = null;
+        mediaRecorder.onstop = null;
+        mediaRecorder.stop();
+      } catch {
+        // Ignore
+      }
+    }
+    mediaRecorder = null;
+    stopMediaEngine();
+  };
+
+  const updateWaveformDom = () => {
+    const bars = container.querySelectorAll('[data-vtt-bar]');
+    bars.forEach((bar, idx) => {
+      const lvl = audioLevels[idx] ?? 18;
+      bar.style.height = `${lvl}%`;
+    });
+  };
+
+  const updateTimerDom = () => {
+    const el = container.querySelector('[data-vtt-timer]');
+    if (el) el.textContent = formatTimer(duration);
+  };
+
+  const updateTranscriptPreviewDom = () => {
+    const box = container.querySelector('[data-vtt-preview]');
+    const insertBtn = container.querySelector('[data-vtt-insert]');
+    if (box) {
+      const combined = [finalTranscript.trim(), interimTranscript.trim()].filter(Boolean).join(' ');
+      if (document.activeElement !== box) {
+        box.value = combined;
+      }
+    }
+    if (insertBtn) {
+      const hasLiveText = !!(finalTranscript.trim() || interimTranscript.trim());
+      const canAiTranscribe = !!(mediaRecorder && audioChunks.length > 0 && duration >= 1);
+      insertBtn.disabled = isTranscribing || (!hasLiveText && !canAiTranscribe && !isListening);
+    }
+  };
+
+  const startSpeechRecognition = () => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec || disposed) return;
+    stopSpeechEngine();
+    try {
+      recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = selectedLang;
+
+      recognition.onresult = (event) => {
+        if (disposed) return;
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const piece = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) {
+            finalTranscript = [finalTranscript.trim(), piece.trim()].filter(Boolean).join(' ');
+          } else {
+            interim += piece;
+          }
+        }
+        interimTranscript = interim;
+        statusHint = 'Live dictation active — edit text below or click Insert Text.';
+        updateTranscriptPreviewDom();
+      };
+
+      recognition.onerror = (event) => {
+        if (disposed) return;
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          speechFailed = true;
+          statusHint = 'Using audio capture — click Done & Transcribe to convert your speech to text.';
+        } else if (event.error === 'network' || event.error === 'audio-capture') {
+          speechFailed = true;
+          statusHint = 'Recording audio — click Done & Transcribe to convert your voice to text.';
+        }
+        render();
+      };
+
+      recognition.onend = () => {
+        if (!disposed && isListening && !speechFailed) {
+          try {
+            recognition.start();
+          } catch {
+            // Ignore restart race
+          }
+        }
+      };
+
+      recognition.start();
+    } catch {
+      speechFailed = true;
+    }
+  };
+
+  const handleFinishAndInsert = async () => {
+    if (isTranscribing || disposed) return;
+
+    const box = container.querySelector('[data-vtt-preview]');
+    const editedText = (box ? box.value : `${finalTranscript} ${interimTranscript}`).trim();
+
+    isListening = false;
+    stopSpeechEngine();
+
+    // If live speech recognition already produced text, insert it directly
+    if (editedText) {
+      cleanup();
+      if (onInsertText) {
+        onInsertText(editedText, {});
+      }
+      return;
+    }
+
+    // Otherwise stop MediaRecorder and transcribe captured audio via /api/ai/transcribe
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      errorMessage = 'No speech detected yet. Please speak into your microphone and try again.';
+      render();
+      return;
+    }
+
+    isTranscribing = true;
+    statusHint = 'Converting your voice to text...';
+    render();
+
+    mediaRecorder.onstop = async () => {
+      try {
+        const mimeType = mediaRecorder?.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunks, { type: mimeType });
+        stopMediaEngine();
+
+        if (!blob || blob.size < 200) {
+          isTranscribing = false;
+          errorMessage = 'No audio was captured. Please check your microphone and try again.';
+          render();
+          return;
+        }
+
+        const audioBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(new Error('Failed to read recorded audio.'));
+          reader.readAsDataURL(blob);
+        });
+
+        const res = await api.transcribeAudio({ audioBase64, mimeType });
+        if (disposed) return;
+
+        const text = (res?.transcription || '').trim();
+        if (!text) {
+          isTranscribing = false;
+          errorMessage = res?.message || 'Could not transcribe speech from audio.';
+          render();
+          return;
+        }
+
+        cleanup();
+        if (onInsertText) {
+          onInsertText(text, {
+            suggestedTitle: res?.suggestedTitle || '',
+            detectedMood: res?.detectedMood || '',
+          });
+        }
+      } catch (err) {
+        if (disposed) return;
+        isTranscribing = false;
+        errorMessage = err?.message || 'Voice-to-text transcription failed.';
+        render();
+      }
+    };
+
+    try {
+      mediaRecorder.stop();
+    } catch {
+      isTranscribing = false;
+      errorMessage = 'Could not finish audio capture.';
+      render();
+    }
+  };
+
+  const startCapture = async () => {
+    try {
+      errorMessage = null;
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      if (disposed) {
+        cleanup();
+        return;
+      }
+
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioContext = new AudioContextClass();
+          const source = audioContext.createMediaStreamSource(stream);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const updateLevels = () => {
+            if (disposed) return;
+            if (analyser && isListening) {
+              analyser.getByteFrequencyData(dataArray);
+              const bars = [];
+              const step = Math.floor(dataArray.length / 12) || 1;
+              for (let i = 0; i < 12; i++) {
+                const val = dataArray[i * step] || 10;
+                bars.push(Math.max(12, Math.min(88, Math.round((val / 255) * 88))));
+              }
+              audioLevels = bars;
+              updateWaveformDom();
+            }
+            animationFrame = requestAnimationFrame(updateLevels);
+          };
+          updateLevels();
+        }
+      } catch {
+        // Ignore visualizer failure
+      }
+
+      const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      let selectedMimeType = '';
+      for (const mime of mimeTypes) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+          selectedMimeType = mime;
+          break;
+        }
+      }
+
+      const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
+      mediaRecorder = new MediaRecorder(stream, options);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+      mediaRecorder.start(250);
+
+      isListening = true;
+      timerInterval = window.setInterval(() => {
+        duration += 1;
+        updateTimerDom();
+      }, 1000);
+
+      if (speechSupported && !speechFailed) {
+        startSpeechRecognition();
+      } else {
+        statusHint = 'Recording audio — speak naturally, then click Transcribe & Insert.';
+      }
+      render();
+    } catch (err) {
+      isListening = false;
+      errorMessage =
+        err && err.name === 'NotAllowedError'
+          ? 'Microphone permission was denied. Please allow microphone access in your browser.'
+          : 'Could not access your microphone. Please check your audio input device.';
+      render();
+    }
+  };
+
+  const render = () => {
+    if (disposed) return;
+
+    const previewValue = [finalTranscript.trim(), interimTranscript.trim()].filter(Boolean).join(' ');
+    const barsHtml = audioLevels
+      .map(
+        (lvl, idx) => `
+      <div data-vtt-bar="${idx}" class="w-1 rounded-full transition-all duration-75 ${
+          isListening ? 'bg-gradient-to-t from-sky-600 to-indigo-500' : 'bg-slate-300 dark:bg-slate-700'
+        }" style="height:${lvl}%"></div>`
+      )
+      .join('');
+
+    const langOptionsHtml = SPEECH_LANGUAGES.map(
+      (l) => `<option value="${escapeHtml(l.code)}" ${selectedLang === l.code ? 'selected' : ''}>${escapeHtml(l.label)}</option>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="my-3 p-4 rounded-2xl bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 border-2 border-sky-300 dark:border-sky-600 shadow-md backdrop-blur-xs space-y-3 animate-in fade-in zoom-in-95">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="relative flex items-center justify-center">
+              <span class="w-4 h-4 rounded-full ${isListening ? 'bg-rose-500 animate-ping' : 'bg-sky-500'} opacity-75"></span>
+              <span class="absolute w-3 h-3 rounded-full ${isListening ? 'bg-rose-500' : 'bg-sky-500'}"></span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-200">
+                  ${isTranscribing ? 'Transcribing Speech...' : 'Voice to Text Dictation'}
+                </span>
+                <span data-vtt-timer class="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 text-sky-700 dark:text-sky-300 shadow-2xs">
+                  ${formatTimer(duration)}
+                </span>
+              </div>
+              <p class="text-[11px] text-sky-800/80 dark:text-sky-300/80 mt-0.5">${escapeHtml(statusHint)}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 self-end sm:self-center flex-wrap">
+            <div class="flex items-center gap-1 h-8 px-2.5 bg-white/75 dark:bg-slate-900/60 rounded-xl border border-sky-200/70 dark:border-sky-800/60">
+              ${barsHtml}
+            </div>
+
+            <select data-vtt-lang aria-label="Dictation language"
+              class="px-2 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+              ${langOptionsHtml}
+            </select>
+
+            <button type="button" data-vtt-insert ${isTranscribing ? 'disabled' : ''}
+              class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              title="Convert speech to text and insert at cursor">
+              <i data-lucide="${isTranscribing ? 'loader-2' : 'check'}" class="w-3.5 h-3.5 ${isTranscribing ? 'animate-spin' : ''}"></i>
+              <span>${isTranscribing ? 'Transcribing...' : previewValue ? 'Insert Text' : 'Transcribe & Insert'}</span>
+            </button>
+
+            <button type="button" data-vtt-cancel
+              class="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              title="Cancel dictation">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <textarea data-vtt-preview rows="2"
+          placeholder="Your spoken words will appear here... You can also edit before inserting."
+          class="w-full px-3 py-2 rounded-xl bg-white/85 dark:bg-slate-900/80 border border-sky-200/80 dark:border-sky-800/60 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-400 resize-y">${escapeHtml(previewValue)}</textarea>
+
+        ${
+          errorMessage
+            ? `<div class="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                <span>${escapeHtml(errorMessage)}</span>
+              </div>`
+            : ''
+        }
+      </div>
+    `;
+
+    renderIcons(container);
+
+    container.querySelector('[data-vtt-lang]')?.addEventListener('change', (e) => {
+      selectedLang = e.target.value;
+      if (isListening && speechSupported && !speechFailed) {
+        startSpeechRecognition();
+      }
+    });
+
+    container.querySelector('[data-vtt-preview]')?.addEventListener('input', (e) => {
+      finalTranscript = e.target.value;
+      interimTranscript = '';
+      const btn = container.querySelector('[data-vtt-insert]');
+      if (btn && !isTranscribing) {
+        btn.querySelector('span').textContent = finalTranscript.trim() ? 'Insert Text' : 'Transcribe & Insert';
+      }
+    });
+
+    container.querySelector('[data-vtt-insert]')?.addEventListener('click', handleFinishAndInsert);
+
+    container.querySelector('[data-vtt-cancel]')?.addEventListener('click', () => {
+      cleanup();
+      if (onCancel) onCancel();
+    });
+  };
+
+  render();
+  startCapture();
+
+  return cleanup;
+}
+
